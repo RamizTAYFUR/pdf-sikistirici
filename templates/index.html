@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PDF Sıkıştırıcı</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center px-4">
+  <div class="bg-white w-full max-w-md rounded-2xl shadow-xl p-6">
+    <h1 class="text-2xl font-bold text-center mb-4">📄 PDF Sıkıştırıcı</h1>
+
+    <!-- Dosya Yükleme -->
+    <div class="mb-4">
+      <label class="block mb-2 font-medium">PDF Dosyanı Seç:</label>
+      <input type="file" id="pdfInput" accept="application/pdf"
+        class="w-full border rounded px-3 py-2 text-sm" />
+      <p id="fileInfo" class="text-xs text-gray-500 mt-1"></p>
+    </div>
+
+    <!-- Sıkıştırma Seçimi -->
+    <div class="mb-4">
+      <label class="block mb-2 font-medium">Sıkıştırma Seviyesi:</label>
+      <div class="flex flex-col gap-1 text-sm">
+        <label><input type="radio" name="quality" value="low" checked /> Düşük - Maksimum küçültme</label>
+        <label><input type="radio" name="quality" value="medium" /> Orta - Denge önerilir</label>
+        <label><input type="radio" name="quality" value="high" /> Yüksek - Kalite öncelikli</label>
+      </div>
+    </div>
+
+    <!-- Butonlar -->
+    <div class="flex gap-4 justify-between mt-4">
+      <button id="compressBtn"
+        class="bg-green-600 text-white font-semibold px-4 py-2 rounded w-1/2 hover:bg-green-700 transition">
+        Sıkıştır
+      </button>
+      <button id="downloadBtn" disabled
+        class="bg-gray-300 text-gray-600 font-semibold px-4 py-2 rounded w-1/2 cursor-not-allowed">
+        İndir
+      </button>
+    </div>
+
+    <!-- İlerleme veya Bilgi -->
+    <div id="status" class="text-center text-sm text-gray-600 mt-4"></div>
+
+    <p class="text-[10px] text-gray-400 mt-6 text-center">Dosyalar gizli tutulur, 30 dk sonra silinir.</p>
+  </div>
+
+  <script>
+    const pdfInput = document.getElementById("pdfInput");
+    const fileInfo = document.getElementById("fileInfo");
+    const compressBtn = document.getElementById("compressBtn");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const status = document.getElementById("status");
+
+    let uploadedFile = null;
+    let downloadURL = "#";
+
+    pdfInput.addEventListener("change", () => {
+      const file = pdfInput.files[0];
+      if (file && file.type === "application/pdf") {
+        uploadedFile = file;
+        fileInfo.textContent = `Seçilen dosya: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+      } else {
+        fileInfo.textContent = "Lütfen geçerli bir PDF seçin.";
+        uploadedFile = null;
+      }
+    });
+
+    compressBtn.addEventListener("click", async () => {
+      if (!uploadedFile) {
+        status.textContent = "Lütfen bir PDF dosyası seçin.";
+        return;
+      }
+
+      const quality = document.querySelector('input[name="quality"]:checked').value;
+      status.textContent = "Sıkıştırılıyor...";
+
+      const formData = new FormData();
+      formData.append("pdf", uploadedFile);
+      formData.append("quality", quality);
+
+      try {
+        const res = await fetch("/compress", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) throw new Error("Sunucu hatası");
+
+        const blob = await res.blob();
+        const blobURL = window.URL.createObjectURL(blob);
+        downloadBtn.href = blobURL;
+        downloadBtn.download = "sikistirilmis.pdf";
+        downloadBtn.disabled = false;
+        downloadBtn.classList.remove("bg-gray-300", "text-gray-600", "cursor-not-allowed");
+        downloadBtn.classList.add("bg-blue-600", "text-white", "hover:bg-blue-700");
+        status.textContent = "Sıkıştırma tamamlandı!";
+      } catch (e) {
+        status.textContent = "Bir hata oluştu. Lütfen tekrar deneyin.";
+      }
+    });
+  </script>
+</body>
+</html>
